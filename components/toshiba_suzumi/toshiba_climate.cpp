@@ -278,10 +278,13 @@ void ToshibaClimateUart::scan() {
   }
 }
 
+// Define TAG exactly once here (without static)
+const char *const TAG = "ToshibaClimateUart";
+
 // Destructors for polymorphic classes to fix vtable linker errors
-ToshibaClimateUart::~ToshibaClimateUart() = default;
-ToshibaPwrModeSelect::~ToshibaPwrModeSelect() = default;
-ToshibaSpecialModeSelect::~ToshibaSpecialModeSelect() = default;
+// ToshibaClimateUart::~ToshibaClimateUart() = default;
+// ToshibaPwrModeSelect::~ToshibaPwrModeSelect() = default;
+// ToshibaSpecialModeSelect::~ToshibaSpecialModeSelect() = default;
 
 }  // namespace toshiba_suzumi
 }  // namespace esphome
