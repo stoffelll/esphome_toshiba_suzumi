@@ -10,26 +10,21 @@
 namespace esphome {
 namespace toshiba_suzumi {
 
-static const char *const TAG = "ToshibaClimateUart";
-// default max temp for units
-static const uint8_t MAX_TEMP = 30;
-// default min temp for units without 8° heating mode
-static const uint8_t MIN_TEMP_STANDARD = 17;
-static const uint8_t SPECIAL_TEMP_OFFSET = 16;
-static const uint8_t SPECIAL_MODE_EIGHT_DEG_MIN_TEMP = 5;
-static const uint8_t SPECIAL_MODE_EIGHT_DEG_MAX_TEMP = 13;
-static const uint8_t SPECIAL_MODE_EIGHT_DEG_DEF_TEMP = 8;
-static const uint8_t NORMAL_MODE_DEF_TEMP = 20;
+// Declare TAG once as extern to avoid multiple symbol errors
+extern const char *const TAG;
 
-static const std::vector<uint8_t> HANDSHAKE[6] = {
-    {2, 255, 255, 0, 0, 0, 0, 2},       {2, 255, 255, 1, 0, 0, 1, 2, 254}, {2, 0, 0, 0, 0, 0, 2, 2, 2, 250},
-    {2, 0, 1, 129, 1, 0, 2, 0, 0, 123}, {2, 0, 1, 2, 0, 0, 2, 0, 0, 254},  {2, 0, 2, 0, 0, 0, 0, 254},
-};
+// Constants
+static constexpr uint8_t MAX_TEMP = 30;
+static constexpr uint8_t MIN_TEMP_STANDARD = 17;
+static constexpr uint8_t SPECIAL_TEMP_OFFSET = 16;
+static constexpr uint8_t SPECIAL_MODE_EIGHT_DEG_MIN_TEMP = 5;
+static constexpr uint8_t SPECIAL_MODE_EIGHT_DEG_MAX_TEMP = 13;
+static constexpr uint8_t SPECIAL_MODE_EIGHT_DEG_DEF_TEMP = 8;
+static constexpr uint8_t NORMAL_MODE_DEF_TEMP = 20;
 
-static const std::vector<uint8_t> AFTER_HANDSHAKE[2] = {
-    {2, 0, 2, 1, 0, 0, 2, 0, 0, 251},
-    {2, 0, 2, 2, 0, 0, 2, 0, 0, 250},
-};
+// Handshake sequences
+extern const std::vector<uint8_t> HANDSHAKE[6];
+extern const std::vector<uint8_t> AFTER_HANDSHAKE[2];
 
 struct ToshibaCommand {
   ToshibaCommandType cmd;
@@ -39,6 +34,8 @@ struct ToshibaCommand {
 
 class ToshibaClimateUart : public PollingComponent, public climate::Climate, public uart::UARTDevice {
  public:
+  ~ToshibaClimateUart() override = default;
+
   void setup() override;
   void loop() override;
   void dump_config() override;
@@ -47,17 +44,14 @@ class ToshibaClimateUart : public PollingComponent, public climate::Climate, pub
   float get_setup_priority() const override { return setup_priority::LATE; }
 
   void set_outdoor_temp_sensor(sensor::Sensor *outdoor_temp_sensor) { outdoor_temp_sensor_ = outdoor_temp_sensor; }
-  void set_pwr_select(select::Select *pws_select) { pwr_select_ = pws_select; }
+  void set_pwr_select(select::Select *pwr_select) { pwr_select_ = pwr_select; }
   void set_horizontal_swing(bool enabled) { horizontal_swing_ = enabled; }
   void disable_wifi_led(bool disabled) { wifi_led_disabled_ = disabled; }
   void set_special_mode_select(select::Select *special_mode_select) { special_mode_select_ = special_mode_select; }
   void set_min_temp(uint8_t min_temp) { min_temp_ = min_temp; }
 
  protected:
-  /// Override control to change settings of the climate device.
   void control(const climate::ClimateCall &call) override;
-
-  /// Return the traits of this controller.
   climate::ClimateTraits traits() override;
 
  private:
@@ -70,7 +64,7 @@ class ToshibaClimateUart : public PollingComponent, public climate::Climate, pub
   select::Select *pwr_select_ = nullptr;
   sensor::Sensor *outdoor_temp_sensor_ = nullptr;
   bool horizontal_swing_ = false;
-  uint8_t min_temp_ = 17; // default min temp for units without 8° heating mode
+  uint8_t min_temp_ = MIN_TEMP_STANDARD;
   bool wifi_led_disabled_ = false;
   select::Select *special_mode_select_ = nullptr;
 
@@ -92,13 +86,19 @@ class ToshibaClimateUart : public PollingComponent, public climate::Climate, pub
 };
 
 class ToshibaPwrModeSelect : public select::Select, public esphome::Parented<ToshibaClimateUart> {
+ public:
+  ~ToshibaPwrModeSelect() override = default;
+
  protected:
-  virtual void control(const std::string &value) override;
+  void control(const std::string &value) override;
 };
 
 class ToshibaSpecialModeSelect : public select::Select, public esphome::Parented<ToshibaClimateUart> {
+ public:
+  ~ToshibaSpecialModeSelect() override = default;
+
  protected:
-  virtual void control(const std::string &value) override;
+  void control(const std::string &value) override;
 };
 
 }  // namespace toshiba_suzumi
