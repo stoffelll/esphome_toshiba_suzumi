@@ -75,9 +75,9 @@ class ToshibaClimateUart : public PollingComponent, public climate::Climate, pub
   select::Select *special_mode_select_ = nullptr;
 
   void enqueue_command_(const ToshibaCommand &command);
-  void send_to_uart(const ToshibaCommand command);
+  void send_to_uart(const ToshibaCommand &command);
   void start_handshake();
-  void parseResponse(std::vector<uint8_t> rawData);
+  void parseResponse(const std::vector<uint8_t> &rawData);
   void requestData(ToshibaCommandType cmd);
   void process_command_queue_();
   void sendCmd(ToshibaCommandType cmd, uint8_t value);
