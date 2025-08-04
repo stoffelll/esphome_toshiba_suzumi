@@ -61,48 +61,53 @@ bool ToshibaClimateUart::validate_message_() {
   if (at == 0)
     return new_byte == 0x02;
 
-  // Always get first three bytes
+  // Always accept first three bytes for basic parsing
   if (at < 2) {
     return true;
   }
 
-  // Byte 3 check for normal command
+  // Byte 3 must be 0x03 for normal commands; allow unknown commands without validation
   if (data[2] != 0x03) {
-    // Non-standard command, allow for now without validation
     return true;
   }
 
   if (at <= 5) {
-    // Skip validation for these early bytes
     return true;
   }
 
-  // Byte 7: LENGTH (determines expected full message length)
-  uint8_t expected_length = 6 + data[6] + 1;  // prefix + data + checksum
+  // Calculate expected full message length: prefix + data length + checksum
+  uint8_t length = 6 + data[6] + 1;
 
-  // Wait for the full message before validating
-  if (this->rx_message_.size() < expected_length) {
-    // Incomplete message, wait for more bytes
-    return true;
+  // Allow for shorter 13-byte frame for compatibility if expected length is 14
+  if (length == 14 && at == 12) {
+    length = 13;
   }
 
-  // Only perform checksum validation if full message is received
-  uint8_t rx_checksum = data[expected_length - 1];
-  uint8_t calc_checksum = checksum(this->rx_message_, expected_length - 1);
+  // If we have not yet received the full frame, wait for more data
+  if (at < length)
+    return true;
+
+  // Received checksum byte is last byte in the full frame
+  uint8_t rx_checksum = data[length - 1];
+
+  // Calculate checksum using existing checksum() method over frame excluding checksum byte
+  uint8_t calc_checksum = checksum(this->rx_message_, length - 1);
 
   if (rx_checksum != calc_checksum) {
     ESP_LOGW(TAG, "Received invalid message checksum %02X!=%02X DATA=[%s]",
-             rx_checksum, calc_checksum, format_hex_pretty(data, expected_length).c_str());
+             rx_checksum, calc_checksum, format_hex_pretty(data, length).c_str());
     return false;
   }
 
-  // Valid message received, process it
-  ESP_LOGV(TAG, "Received: DATA=[%s]", format_hex_pretty(data, expected_length).c_str());
+  ESP_LOGV(TAG, "Received: DATA=[%s]", format_hex_pretty(data, length).c_str());
+
+  // Parse the successfully validated message
   this->parseResponse(this->rx_message_);
 
-  // Reset buffer by returning false
+  // Return false to reset rx buffer and prepare for next message
   return false;
 }
+
 
 void ToshibaClimateUart::enqueue_command_(const ToshibaCommand &command) {
   this->command_queue_.push_back(command);
