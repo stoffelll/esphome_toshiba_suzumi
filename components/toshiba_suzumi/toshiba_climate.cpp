@@ -61,46 +61,46 @@ bool ToshibaClimateUart::validate_message_() {
   if (at == 0)
     return new_byte == 0x02;
 
-  // always get first three bytes
+  // Always get first three bytes
   if (at < 2) {
     return true;
   }
 
-  // Byte 3
+  // Byte 3 check for normal command
   if (data[2] != 0x03) {
-    // Normal commands starts with 0x02 0x00 0x03 and have length between 15-17 bytes.
-    // however there are some special unknown handshake commands which has non-standard replies.
-    // Since we don't know their format, we can't validate them.
+    // Non-standard command, allow for now without validation
     return true;
   }
 
   if (at <= 5) {
-    // no validation for these fields
+    // Skip validation for these early bytes
     return true;
   }
 
-  // Byte 7: LENGTH
-  uint8_t length = 6 + data[6] + 1;  // prefix + data + checksum
+  // Byte 7: LENGTH (determines expected full message length)
+  uint8_t expected_length = 6 + data[6] + 1;  // prefix + data + checksum
 
-  // wait until all data is read
-  if (at < length)
+  // Wait for the full message before validating
+  if (this->rx_message_.size() < expected_length) {
+    // Incomplete message, wait for more bytes
     return true;
+  }
 
-  // last byte: CHECKSUM
-  uint8_t rx_checksum = new_byte;
-  uint8_t calc_checksum = checksum(this->rx_message_, at);
+  // Only perform checksum validation if full message is received
+  uint8_t rx_checksum = data[expected_length - 1];
+  uint8_t calc_checksum = checksum(this->rx_message_, expected_length - 1);
 
   if (rx_checksum != calc_checksum) {
-    ESP_LOGW(TAG, "Received invalid message checksum %02X!=%02X DATA=[%s]", rx_checksum, calc_checksum,
-             format_hex_pretty(data, length).c_str());
+    ESP_LOGW(TAG, "Received invalid message checksum %02X!=%02X DATA=[%s]",
+             rx_checksum, calc_checksum, format_hex_pretty(data, expected_length).c_str());
     return false;
   }
 
-  // valid message
-  ESP_LOGV(TAG, "Received: DATA=[%s]", format_hex_pretty(data, length).c_str());
+  // Valid message received, process it
+  ESP_LOGV(TAG, "Received: DATA=[%s]", format_hex_pretty(data, expected_length).c_str());
   this->parseResponse(this->rx_message_);
 
-  // return false to reset rx buffer
+  // Reset buffer by returning false
   return false;
 }
 
