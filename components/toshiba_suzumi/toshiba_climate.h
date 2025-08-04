@@ -10,19 +10,19 @@
 namespace esphome {
 namespace toshiba_suzumi {
 
-// Declare TAG once as extern to avoid multiple symbol errors
+// Declare TAG as extern, defined once in .cpp
 extern const char *const TAG;
 
 // Constants
-static constexpr uint8_t MAX_TEMP = 30;
-static constexpr uint8_t MIN_TEMP_STANDARD = 17;
-static constexpr uint8_t SPECIAL_TEMP_OFFSET = 16;
-static constexpr uint8_t SPECIAL_MODE_EIGHT_DEG_MIN_TEMP = 5;
-static constexpr uint8_t SPECIAL_MODE_EIGHT_DEG_MAX_TEMP = 13;
-static constexpr uint8_t SPECIAL_MODE_EIGHT_DEG_DEF_TEMP = 8;
-static constexpr uint8_t NORMAL_MODE_DEF_TEMP = 20;
+constexpr uint8_t MAX_TEMP = 30;
+constexpr uint8_t MIN_TEMP_STANDARD = 17;
+constexpr uint8_t SPECIAL_TEMP_OFFSET = 16;
+constexpr uint8_t SPECIAL_MODE_EIGHT_DEG_MIN_TEMP = 5;
+constexpr uint8_t SPECIAL_MODE_EIGHT_DEG_MAX_TEMP = 13;
+constexpr uint8_t SPECIAL_MODE_EIGHT_DEG_DEF_TEMP = 8;
+constexpr uint8_t NORMAL_MODE_DEF_TEMP = 20;
 
-// Handshake sequences
+// Forward declare handshake arrays (define in .cpp)
 extern const std::vector<uint8_t> HANDSHAKE[6];
 extern const std::vector<uint8_t> AFTER_HANDSHAKE[2];
 
@@ -34,7 +34,7 @@ struct ToshibaCommand {
 
 class ToshibaClimateUart : public PollingComponent, public climate::Climate, public uart::UARTDevice {
  public:
-  ~ToshibaClimateUart() override = default;
+  ~ToshibaClimateUart() = default;
 
   void setup() override;
   void loop() override;
@@ -87,7 +87,7 @@ class ToshibaClimateUart : public PollingComponent, public climate::Climate, pub
 
 class ToshibaPwrModeSelect : public select::Select, public esphome::Parented<ToshibaClimateUart> {
  public:
-  ~ToshibaPwrModeSelect() override = default;
+  ~ToshibaPwrModeSelect() = default;
 
  protected:
   void control(const std::string &value) override;
@@ -95,7 +95,7 @@ class ToshibaPwrModeSelect : public select::Select, public esphome::Parented<Tos
 
 class ToshibaSpecialModeSelect : public select::Select, public esphome::Parented<ToshibaClimateUart> {
  public:
-  ~ToshibaSpecialModeSelect() override = default;
+  ~ToshibaSpecialModeSelect() = default;
 
  protected:
   void control(const std::string &value) override;
