@@ -7,7 +7,7 @@ namespace toshiba_suzumi {
 
 using namespace esphome::climate;
 
-static const char* TAG = "toshiba_climate";
+// static const char* TAG = "toshiba_climate";
 
 static constexpr int RECEIVE_TIMEOUT_MS = 200;
 static constexpr int COMMAND_DELAY_MS = 100;
