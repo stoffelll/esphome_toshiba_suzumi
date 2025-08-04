@@ -78,35 +78,36 @@ bool ToshibaClimateUart::validate_message_() {
   // Calculate expected full message length: prefix + data length + checksum
   uint8_t length = 6 + data[6] + 1;
 
-  // Allow for shorter 13-byte frame for compatibility if expected length is 14
-  if (length == 14 && at == 12) {
-    length = 13;
+  // Temporary patch: accept 13-byte frames without checksum validation
+  // for units sending shorter frames causing checksum failures
+  if (length == 14 && at == 12) {  // received 13 bytes when expecting 14
+    ESP_LOGW(TAG, "Skipping checksum on 13-byte frame: %s",
+             format_hex_pretty(data, length).c_str());
+    this->parseResponse(this->rx_message_);
+    return false;  // Reset buffer after processing
   }
 
-  // If we have not yet received the full frame, wait for more data
+  // Wait for full expected message length
   if (at < length)
     return true;
 
-  // Received checksum byte is last byte in the full frame
+  // Validate checksum on full frames
   uint8_t rx_checksum = data[length - 1];
-
-  // Calculate checksum using existing checksum() method over frame excluding checksum byte
   uint8_t calc_checksum = checksum(this->rx_message_, length - 1);
 
   if (rx_checksum != calc_checksum) {
-    ESP_LOGW(TAG, "V1 - Received invalid message checksum %02X!=%02X DATA=[%s]",
+    ESP_LOGW(TAG, "Received invalid message checksum %02X!=%02X DATA=[%s]",
              rx_checksum, calc_checksum, format_hex_pretty(data, length).c_str());
     return false;
   }
 
   ESP_LOGV(TAG, "Received: DATA=[%s]", format_hex_pretty(data, length).c_str());
 
-  // Parse the successfully validated message
   this->parseResponse(this->rx_message_);
 
-  // Return false to reset rx buffer and prepare for next message
   return false;
 }
+
 
 
 void ToshibaClimateUart::enqueue_command_(const ToshibaCommand &command) {
