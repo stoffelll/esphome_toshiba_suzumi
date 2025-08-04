@@ -94,7 +94,7 @@ bool ToshibaClimateUart::validate_message_() {
   uint8_t calc_checksum = checksum(this->rx_message_, length - 1);
 
   if (rx_checksum != calc_checksum) {
-    ESP_LOGW(TAG, "Received invalid message checksum %02X!=%02X DATA=[%s]",
+    ESP_LOGW(TAG, "V1 - Received invalid message checksum %02X!=%02X DATA=[%s]",
              rx_checksum, calc_checksum, format_hex_pretty(data, length).c_str());
     return false;
   }
