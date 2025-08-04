@@ -53,60 +53,71 @@ void ToshibaClimateUart::start_handshake() {
  * are ended via RECIEVE timeout.
  */
 bool ToshibaClimateUart::validate_message_() {
-  uint8_t at = this->rx_message_.size() - 1;
+  // Minimum valid message length (header + length byte + checksum)
+  constexpr uint8_t kMinMessageLength = 7;
+
+  if (this->rx_message_.size() < kMinMessageLength) {
+    // Too short for any meaningful validation
+    return true;
+  }
+
   auto *data = &this->rx_message_[0];
-  uint8_t new_byte = data[at];
+  uint8_t at = this->rx_message_.size() - 1;
 
-  // Byte 0: HEADER (always 0x02)
-  if (at == 0)
-    return new_byte == 0x02;
-
-  // Always accept first three bytes for basic parsing
-  if (at < 2) {
-    return true;
-  }
-
-  // Byte 3 must be 0x03 for normal commands; allow unknown commands without validation
-  if (data[2] != 0x03) {
-    return true;
-  }
-
-  if (at <= 5) {
-    return true;
-  }
-
-  // Calculate expected full message length: prefix + data length + checksum
-  uint8_t length = 6 + data[6] + 1;
-
-  // Temporary patch: accept 13-byte frames without checksum validation
-  // for units sending shorter frames causing checksum failures
-  if (length == 14 && at == 12) {  // received 13 bytes when expecting 14
-    ESP_LOGW(TAG, "Skipping checksum on 13-byte frame: %s",
-             format_hex_pretty(data, length).c_str());
-    this->parseResponse(this->rx_message_);
-    return false;  // Reset buffer after processing
-  }
-
-  // Wait for full expected message length
-  if (at < length)
-    return true;
-
-  // Validate checksum on full frames
-  uint8_t rx_checksum = data[length - 1];
-  uint8_t calc_checksum = checksum(this->rx_message_, length - 1);
-
-  if (rx_checksum != calc_checksum) {
-    ESP_LOGW(TAG, "Received invalid message checksum %02X!=%02X DATA=[%s]",
-             rx_checksum, calc_checksum, format_hex_pretty(data, length).c_str());
+  // Validate header byte
+  if (data[0] != 0x02) {
+    ESP_LOGW(TAG, "Invalid header byte: 0x%02X, dropping buffer", data[0]);
+    this->rx_message_.clear();
     return false;
   }
 
-  ESP_LOGV(TAG, "Received: DATA=[%s]", format_hex_pretty(data, length).c_str());
+  // Early check for command type consistency
+  if (data[2] != 0x03) {
+    // Possibly a handshake or unknown message, accept for now
+    return true;
+  }
 
+  // Calculate expected length dynamically
+  uint8_t expected_length = 6 + data[6] + 1;
+
+  if (this->rx_message_.size() < expected_length) {
+    // Not fully received yet; wait for more bytes
+    return true;
+  }
+
+  if (this->rx_message_.size() > expected_length) {
+    // Defensive: Clear buffer if oversized
+    ESP_LOGW(TAG, "Received oversized frame, clearing buffer.");
+    this->rx_message_.clear();
+    return false;
+  }
+
+  // Calculate and verify checksum
+  uint8_t rx_checksum = data[expected_length - 1];
+  uint8_t calc_checksum = checksum(this->rx_message_, expected_length - 1);
+
+  if (rx_checksum != calc_checksum) {
+    // For frames just 1 byte short (common case on your device), attempt to skip checksum here
+    if ((expected_length == 14 && expected_length - 1 == this->rx_message_.size())) {
+      ESP_LOGW(TAG, "Skipping checksum validation on near-complete 13-byte frame: %s",
+               format_hex_pretty(data, expected_length).c_str());
+      this->parseResponse(this->rx_message_);
+      this->rx_message_.clear();
+      return false;
+    }
+    ESP_LOGW(TAG, "Received invalid message checksum %02X!=%02X DATA=[%s]",
+             rx_checksum, calc_checksum, format_hex_pretty(data, expected_length).c_str());
+    this->rx_message_.clear();
+    return false;
+  }
+
+  // Process valid message and clear buffer
+  ESP_LOGV(TAG, "Received valid data frame: [%s]", format_hex_pretty(data, expected_length).c_str());
   this->parseResponse(this->rx_message_);
-
+  this->rx_message_.clear();
   return false;
 }
+
 
 
 
